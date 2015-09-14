@@ -156,7 +156,7 @@ class LumpNavGuidelet(Guidelet):
     # Set needle and cautery transforms and models
     self.tumorMarkups_Needle = None
     self.tumorMarkups_NeedleObserver = None
-    self.setupScene()
+    #self.setupScene()
 
     # Setting button open on startup.
     self.calibrationCollapsibleButton.setProperty('collapsed', False)
