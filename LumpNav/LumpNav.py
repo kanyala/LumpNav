@@ -50,8 +50,9 @@ class LumpNavWidget(GuideletWidget):
 
   def onConfigurationChanged(self, selectedConfigurationName):
     GuideletWidget.onConfigurationChanged(self, selectedConfigurationName)
-    settings = slicer.app.userSettings()
-    lightEnabled = settings.value(self.moduleName + '/Configurations/' + self.selectedConfigurationName + '/EnableBreachWarningLight')
+    #settings = slicer.app.userSettings()
+    #lightEnabled = settings.value(self.moduleName + '/Configurations/' + self.selectedConfigurationName + '/EnableBreachWarningLight')
+    lightEnabled = self.guideletLogic.getSettingsValue('EnableBreachWarningLight')
     self.breachWarningLightCheckBox.checked = (lightEnabled == 'True')
 
   def addBreachWarningLightPreferences(self):
@@ -73,8 +74,9 @@ class LumpNavWidget(GuideletWidget):
         self.breachWarningLightCheckBox.setDisabled(True)
     else:
         self.breachWarningLightCheckBox.setEnabled(True)
-        settings = slicer.app.userSettings()
-        lightEnabled = settings.value(self.moduleName + '/Configurations/' + self.selectedConfigurationName + '/EnableBreachWarningLight', 'True')
+        #settings = slicer.app.userSettings()
+        #lightEnabled = settings.value(self.moduleName + '/Configurations/' + self.selectedConfigurationName + '/EnableBreachWarningLight', 'True')
+        lightEnabled = self.guideletLogic.getSettingsValue('EnableBreachWarningLight')
         self.breachWarningLightCheckBox.checked = (lightEnabled == 'True')
         
     self.breachWarningLightCheckBox.connect('stateChanged(int)', self.onBreachWarningLightChanged)
@@ -85,10 +87,12 @@ class LumpNavWidget(GuideletWidget):
       lightEnabled = 'True'
     elif not self.breachWarningLightCheckBox.checked:
       lightEnabled = 'False'
-    self.guideletLogic.updateSettings({'EnableBreachWarningLight' : lightEnabled}, self.selectedConfigurationName)
+    #self.guideletLogic.updateSettings({'EnableBreachWarningLight' : lightEnabled}, self.selectedConfigurationName)
+    self.guideletLogic.updateSettings({'EnableBreachWarningLight' : lightEnabled})
 
   def createGuideletInstance(self):
-    return LumpNavGuidelet(None, self.guideletLogic, self.selectedConfigurationName)
+    #return LumpNavGuidelet(None, self.guideletLogic, self.selectedConfigurationName)
+    return LumpNavGuidelet(None, self.guideletLogic)
 
   def createGuideletLogic(self):
     return LumpNavLogic()
@@ -140,8 +144,10 @@ class LumpNavTest(GuideletTest):
 
 class LumpNavGuidelet(Guidelet):
 
-  def __init__(self, parent, logic, configurationName='Default'):
-    Guidelet.__init__(self, parent, logic, configurationName)
+  #def __init__(self, parent, logic, configurationName='Default'):
+  #  Guidelet.__init__(self, parent, logic, configurationName)
+  def __init__(self, parent, logic):
+    Guidelet.__init__(self, parent, logic)
     logging.debug('LumpNavGuidelet.__init__')
 
     moduleDirectoryPath = slicer.modules.lumpnav.path.replace('LumpNav.py', '')
@@ -228,7 +234,7 @@ class LumpNavGuidelet(Guidelet):
     if not self.cauteryTipToCautery:
       self.cauteryTipToCautery=slicer.vtkMRMLLinearTransformNode()
       self.cauteryTipToCautery.SetName("CauteryTipToCautery")
-      m = self.logic.readTransformFromSettings('CauteryTipToCautery', self.configurationName) 
+      m = self.logic.readTransformFromSettings('CauteryTipToCautery') 
       if m:
         self.cauteryTipToCautery.SetMatrixTransformToParent(m)
       slicer.mrmlScene.AddNode(self.cauteryTipToCautery)
@@ -237,7 +243,7 @@ class LumpNavGuidelet(Guidelet):
     if not self.cauteryModelToCauteryTip:
       self.cauteryModelToCauteryTip=slicer.vtkMRMLLinearTransformNode()
       self.cauteryModelToCauteryTip.SetName("CauteryModelToCauteryTip")
-      m = self.logic.readTransformFromSettings('CauteryModelToCauteryTip', self.configurationName) 
+      m = self.logic.readTransformFromSettings('CauteryModelToCauteryTip') 
       if m:
         self.cauteryModelToCauteryTip.SetMatrixTransformToParent(m)
       slicer.mrmlScene.AddNode(self.cauteryModelToCauteryTip)
@@ -246,7 +252,7 @@ class LumpNavGuidelet(Guidelet):
     if not self.needleTipToNeedle:
       self.needleTipToNeedle=slicer.vtkMRMLLinearTransformNode()
       self.needleTipToNeedle.SetName("NeedleTipToNeedle")
-      m = self.logic.readTransformFromSettings('NeedleTipToNeedle', self.configurationName) 
+      m = self.logic.readTransformFromSettings('NeedleTipToNeedle') 
       if m:
         self.needleTipToNeedle.SetMatrixTransformToParent(m)
       slicer.mrmlScene.AddNode(self.needleTipToNeedle)      
@@ -255,7 +261,7 @@ class LumpNavGuidelet(Guidelet):
     if not self.needleModelToNeedleTip:
       self.needleModelToNeedleTip=slicer.vtkMRMLLinearTransformNode()
       self.needleModelToNeedleTip.SetName("NeedleModelToNeedleTip")
-      m = self.logic.readTransformFromSettings('NeedleModelToNeedleTip', self.configurationName) 
+      m = self.logic.readTransformFromSettings('NeedleModelToNeedleTip') 
       if m:
         self.needleModelToNeedleTip.SetMatrixTransformToParent(m)
       slicer.mrmlScene.AddNode(self.needleModelToNeedleTip)
@@ -476,7 +482,7 @@ class LumpNavGuidelet(Guidelet):
     self.pivotCalibrationLogic.GetToolTipToToolMatrix(tooltipToToolMatrix)
     self.pivotCalibrationLogic.ClearToolToReferenceMatrices()
     self.pivotCalibrationResultTargetNode.SetMatrixTransformToParent(tooltipToToolMatrix)
-    self.logic.writeTransformToSettings(self.pivotCalibrationResultTargetName, tooltipToToolMatrix, self.configurationName)
+    self.logic.writeTransformToSettings(self.pivotCalibrationResultTargetName, tooltipToToolMatrix)
     self.countdownLabel.setText("Calibration completed, error = %f mm" % self.pivotCalibrationLogic.GetPivotRMSE())
     logging.debug("Pivot calibration completed. Tool: {0}. RMSE = {1} mm".format(self.pivotCalibrationResultTargetNode.GetName(), self.pivotCalibrationLogic.GetPivotRMSE()))
 
