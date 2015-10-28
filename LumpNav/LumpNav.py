@@ -50,8 +50,6 @@ class LumpNavWidget(GuideletWidget):
 
   def onConfigurationChanged(self, selectedConfigurationName):
     GuideletWidget.onConfigurationChanged(self, selectedConfigurationName)
-    #settings = slicer.app.userSettings()
-    #lightEnabled = settings.value(self.moduleName + '/Configurations/' + self.selectedConfigurationName + '/EnableBreachWarningLight')
     lightEnabled = self.guideletLogic.getSettingsValue('EnableBreachWarningLight')
     self.breachWarningLightCheckBox.checked = (lightEnabled == 'True')
 
@@ -74,8 +72,6 @@ class LumpNavWidget(GuideletWidget):
         self.breachWarningLightCheckBox.setDisabled(True)
     else:
         self.breachWarningLightCheckBox.setEnabled(True)
-        #settings = slicer.app.userSettings()
-        #lightEnabled = settings.value(self.moduleName + '/Configurations/' + self.selectedConfigurationName + '/EnableBreachWarningLight', 'True')
         lightEnabled = self.guideletLogic.getSettingsValue('EnableBreachWarningLight')
         self.breachWarningLightCheckBox.checked = (lightEnabled == 'True')
         
@@ -87,11 +83,9 @@ class LumpNavWidget(GuideletWidget):
       lightEnabled = 'True'
     elif not self.breachWarningLightCheckBox.checked:
       lightEnabled = 'False'
-    #self.guideletLogic.updateSettings({'EnableBreachWarningLight' : lightEnabled}, self.selectedConfigurationName)
     self.guideletLogic.updateSettings({'EnableBreachWarningLight' : lightEnabled})
 
   def createGuideletInstance(self):
-    #return LumpNavGuidelet(None, self.guideletLogic, self.selectedConfigurationName)
     return LumpNavGuidelet(None, self.guideletLogic)
 
   def createGuideletLogic(self):
@@ -144,8 +138,6 @@ class LumpNavTest(GuideletTest):
 
 class LumpNavGuidelet(Guidelet):
 
-  #def __init__(self, parent, logic, configurationName='Default'):
-  #  Guidelet.__init__(self, parent, logic, configurationName)
   def __init__(self, parent, logic):
     Guidelet.__init__(self, parent, logic)
     logging.debug('LumpNavGuidelet.__init__')
@@ -780,9 +772,9 @@ class LumpNavGuidelet(Guidelet):
     self.tumorModel_Needle.Modified()
 
   def setupViewpoint(self):
-    rightView = slicer.util.getNode("view2")
+    rightView = slicer.util.getNode("View2")
     self.RightCamera.SetActiveTag(rightView.GetID())
-    leftView = slicer.util.getNode("view1")
+    leftView = slicer.util.getNode("View1")
     self.LeftCamera.SetActiveTag(leftView.GetID())
 
   def setDisableSliders(self, disable):
