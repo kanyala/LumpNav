@@ -156,17 +156,18 @@ class LumpNavGuidelet(Guidelet):
 
     import Viewpoint
     self.viewpointLogic = Viewpoint.ViewpointLogic()
-    self.viewpointLogicRight = Viewpoint.ViewpointLogic()
 
     # Set needle and cautery transforms and models
     self.tumorMarkups_Needle = None
     self.tumorMarkups_NeedleObserver = None
-    #self.setupScene()
+    self.setupScene()
 
     self.navigationView = self.VIEW_DUAL_3D
 
     # Setting button open on startup.
     self.calibrationCollapsibleButton.setProperty('collapsed', False)
+    
+    slicer.lumpguidelet = self #TODO: Remove
 
   def createFeaturePanels(self):
     # Create GUI panels.
@@ -212,6 +213,8 @@ class LumpNavGuidelet(Guidelet):
 
     self.rightCameraButton.connect('clicked()', self.onRightCameraButtonClicked)
     self.leftCameraButton.connect('clicked()', self.onLeftCameraButtonClicked)
+    self.rightFollowCameraButton.connect('clicked()', self.onRightFollowCameraButtonClicked)
+    self.leftFollowCameraButton.connect('clicked()', self.onLeftFollowCameraButtonClicked)
 
     self.dual3dButton.connect('clicked()', self.onDual3dButtonClicked)
     self.triple3dButton.connect('clicked()', self.onTriple3dButtonClicked)
@@ -220,17 +223,17 @@ class LumpNavGuidelet(Guidelet):
 
     self.pivotSamplingTimer.connect('timeout()',self.onPivotSamplingTimeout)
 
-  def connectViewpointLogic(self, viewpointLogic):
-    self.cameraViewAngleSlider.connect('valueChanged(double)', viewpointLogic.SetCameraViewAngleDeg)
-    self.cameraXPosSlider.connect('valueChanged(double)', viewpointLogic.SetCameraXPosMm)
-    self.cameraYPosSlider.connect('valueChanged(double)', viewpointLogic.SetCameraYPosMm)
-    self.cameraZPosSlider.connect('valueChanged(double)', viewpointLogic.SetCameraZPosMm)
+  def connectViewpointLogic(self, viewNode):
+    self.cameraViewAngleSlider.connect('valueChanged(double)', self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetCameraViewAngleDeg)
+    self.cameraXPosSlider.connect('valueChanged(double)', self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetCameraXPosMm)
+    self.cameraYPosSlider.connect('valueChanged(double)', self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetCameraYPosMm)
+    self.cameraZPosSlider.connect('valueChanged(double)', self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetCameraZPosMm)
 
-  def disconnectViewpointLogic(self, viewpointLogic):
-    self.cameraViewAngleSlider.disconnect('valueChanged(double)', viewpointLogic.SetCameraViewAngleDeg)
-    self.cameraXPosSlider.disconnect('valueChanged(double)', viewpointLogic.SetCameraXPosMm)
-    self.cameraYPosSlider.disconnect('valueChanged(double)', viewpointLogic.SetCameraYPosMm)
-    self.cameraZPosSlider.disconnect('valueChanged(double)', viewpointLogic.SetCameraZPosMm)
+  def disconnectViewpointLogic(self, viewNode):
+    self.cameraViewAngleSlider.disconnect('valueChanged(double)', self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetCameraViewAngleDeg)
+    self.cameraXPosSlider.disconnect('valueChanged(double)', self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetCameraXPosMm)
+    self.cameraYPosSlider.disconnect('valueChanged(double)', self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetCameraYPosMm)
+    self.cameraZPosSlider.disconnect('valueChanged(double)', self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetCameraZPosMm)
 
   def setupScene(self): #applet specific
     logging.debug('setupScene')
@@ -305,15 +308,6 @@ class LumpNavGuidelet(Guidelet):
       m = self.logic.createMatrixFromString('0 0 -1 0 1 0 0 0 0 -1 0 0 0 0 0 1')
       self.cauteryCameraToCautery.SetMatrixTransformToParent(m)
       slicer.mrmlScene.AddNode(self.cauteryCameraToCautery)
-
-#duplicate camera settings
-    self.cauteryRightCameraToCautery = slicer.util.getNode('CauteryRightCameraToCautery')
-    if not self.cauteryRightCameraToCautery:
-      self.cauteryRightCameraToCautery=slicer.vtkMRMLLinearTransformNode()
-      self.cauteryRightCameraToCautery.SetName("CauteryRightCameraToCautery")
-      m = self.logic.createMatrixFromString('0 0 -1 0 1 0 0 0 0 -1 0 0 0 0 0 1')
-      self.cauteryRightCameraToCautery.SetMatrixTransformToParent(m)
-      slicer.mrmlScene.AddNode(self.cauteryRightCameraToCautery)
 
     self.CauteryToNeedle = slicer.util.getNode('CauteryToNeedle')
     if not self.CauteryToNeedle:
@@ -426,7 +420,6 @@ class LumpNavGuidelet(Guidelet):
     logging.debug('Set up transform tree')
     self.cauteryToReference.SetAndObserveTransformNodeID(self.referenceToRas.GetID())
     self.cauteryCameraToCautery.SetAndObserveTransformNodeID(self.cauteryToReference.GetID())
-    self.cauteryRightCameraToCautery.SetAndObserveTransformNodeID(self.cauteryToReference.GetID())
     self.cauteryTipToCautery.SetAndObserveTransformNodeID(self.cauteryToReference.GetID())
     self.cauteryModelToCauteryTip.SetAndObserveTransformNodeID(self.cauteryTipToCautery.GetID())
     self.needleToReference.SetAndObserveTransformNodeID(self.referenceToRas.GetID())
@@ -474,9 +467,6 @@ class LumpNavGuidelet(Guidelet):
 
     self.pivotSamplingTimer.disconnect('timeout()',self.onPivotSamplingTimeout)
 
-#duplicate viewpointLogic
-    self.disconnectViewpointLogic(self.viewpointLogic)
-    self.disconnectViewpointLogic(self.viewpointLogicRight)
     self.placeTumorPointAtCauteryTipButton.disconnect('clicked(bool)', self.onPlaceTumorPointAtCauteryTipClicked)
 
 
@@ -667,6 +657,17 @@ class LumpNavGuidelet(Guidelet):
     hbox.addWidget(self.leftCameraButton)
     hbox.addWidget(self.rightCameraButton)
     self.navigationCollapsibleLayout.addRow(hbox)
+    
+    self.leftFollowCameraButton = qt.QPushButton("Left follow")
+    self.leftFollowCameraButton.setCheckable(True)
+    
+    self.rightFollowCameraButton = qt.QPushButton("Right follow")
+    self.rightFollowCameraButton.setCheckable(True)
+    
+    followHbox = qt.QHBoxLayout()
+    followHbox.addWidget(self.leftFollowCameraButton)
+    followHbox.addWidget(self.rightFollowCameraButton)
+    self.navigationCollapsibleLayout.addRow(followHbox)
 
     # "View" Collapsible
     self.viewCollapsibleButton = ctk.ctkCollapsibleGroupBox()
@@ -847,6 +848,13 @@ class LumpNavGuidelet(Guidelet):
     camerasLogic = slicer.modules.cameras.logic()
     camera = camerasLogic.GetViewActiveCameraNode(slicer.util.getNode(viewName))
     return camera
+    
+  def getViewNode(self, viewName):
+    """
+    Get the view node for the selected 3D view
+    """
+    viewNode = slicer.util.getNode(viewName)
+    return viewNode
 
   def setDisableSliders(self, disable):
     self.cameraViewAngleSlider.setDisabled(disable)
@@ -856,46 +864,95 @@ class LumpNavGuidelet(Guidelet):
 
   def onRightCameraButtonClicked(self):
     logging.debug("onRightCameraButtonClicked {0}".format(self.rightCameraButton.isChecked()))
+    viewNode = self.getViewNode('View2')
+    self.viewpointLogic.changeCurrentViewNode(viewNode)
     if (self.rightCameraButton.isChecked()== True):
-        self.leftCameraButton.setDisabled(True)
-
-        self.cameraViewAngleSlider.value = self.viewpointLogicRight.cameraViewAngleDeg
-        self.cameraXPosSlider.value = self.viewpointLogicRight.cameraXPosMm
-        self.cameraZPosSlider.value = self.viewpointLogicRight.cameraZPosMm
-        self.cameraYPosSlider.value = self.viewpointLogicRight.cameraYPosMm
-        
-        self.connectViewpointLogic(self.viewpointLogicRight)
-        self.viewpointLogicRight.setCameraNode(self.getCamera('View2'))
-        self.viewpointLogicRight.setTransformNode(self.cauteryRightCameraToCautery)
-        self.viewpointLogicRight.startViewpoint()
-        self.setDisableSliders(False)
-    else:
-        self.setDisableSliders(True)
-        self.viewpointLogicRight.stopViewpoint()
-        self.disconnectViewpointLogic(self.viewpointLogicRight)
-        self.leftCameraButton.setDisabled(False)
-
-  def onLeftCameraButtonClicked(self):
-    logging.debug("onLeftCameraButtonClicked {0}".format(self.leftCameraButton.isChecked()))
-    if (self.leftCameraButton.isChecked() == True):
-      self.rightCameraButton.setDisabled(True)
-      
-      self.cameraViewAngleSlider.value = self.viewpointLogic.cameraViewAngleDeg
-      self.cameraXPosSlider.value = self.viewpointLogic.cameraXPosMm
-      self.cameraZPosSlider.value = self.viewpointLogic.cameraZPosMm
-      self.cameraYPosSlider.value = self.viewpointLogic.cameraYPosMm
-      
-      self.connectViewpointLogic(self.viewpointLogic)
-      self.viewpointLogic.setCameraNode(self.getCamera('View1'))
-      self.viewpointLogic.setTransformNode(self.cauteryCameraToCautery)
-      self.viewpointLogic.startViewpoint()
+      self.cameraViewAngleSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraViewAngleDeg
+      self.cameraXPosSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraXPosMm
+      self.cameraZPosSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraZPosMm
+      self.cameraYPosSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraYPosMm
+  
+      self.connectViewpointLogic(viewNode)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].setViewNode(viewNode)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetTransformNode(self.cauteryCameraToCautery)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewStart()
       self.setDisableSliders(False)
     else:
       self.setDisableSliders(True)
-      self.viewpointLogic.stopViewpoint()
-      self.disconnectViewpointLogic(self.viewpointLogic)
-      self.rightCameraButton.setDisabled(False)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewStop()
+      self.disconnectViewpointLogic(viewNode)
+    self.updateDisableForButtons()
 
+  def onLeftCameraButtonClicked(self):
+    logging.debug("onLeftCameraButtonClicked {0}".format(self.leftCameraButton.isChecked()))
+    viewNode = self.getViewNode('View1')
+    self.viewpointLogic.changeCurrentViewNode(viewNode)
+    if (self.leftCameraButton.isChecked() == True):
+      self.cameraViewAngleSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraViewAngleDeg
+      self.cameraXPosSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraXPosMm
+      self.cameraZPosSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraZPosMm
+      self.cameraYPosSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraYPosMm
+      
+      self.connectViewpointLogic(viewNode)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].setViewNode(viewNode)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetTransformNode(self.cauteryCameraToCautery)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewStart()
+      self.setDisableSliders(False)
+    else:
+      self.setDisableSliders(True)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewStop()
+      self.disconnectViewpointLogic(viewNode)
+    self.updateDisableForButtons()
+      
+  def onRightFollowCameraButtonClicked(self):
+    logging.debug("onRightFollowCameraButtonClicked {0}".format(self.rightFollowCameraButton.isChecked()))
+    viewNode = self.getViewNode('View2')
+    self.viewpointLogic.changeCurrentViewNode(viewNode)
+    if (self.rightFollowCameraButton.isChecked() == True):
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].setViewNode(viewNode)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].followSetSafeXMinimum(-0.6)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].followSetSafeXMaximum(0.6)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].followSetSafeYMinimum(-0.6)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].followSetSafeYMaximum(0.6)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].followSetModelNode(self.tumorModel_Needle)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].followStart()
+    else:
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].followStop()
+    self.updateDisableForButtons()
+
+  def onLeftFollowCameraButtonClicked(self):
+    logging.debug("onLeftFollowCameraButtonClicked {0}".format(self.leftFollowCameraButton.isChecked()))
+    viewNode = self.getViewNode('View1')
+    self.viewpointLogic.changeCurrentViewNode(viewNode)
+    if (self.leftFollowCameraButton.isChecked() == True):
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].setViewNode(viewNode)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].followSetSafeXMinimum(-0.6)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].followSetSafeXMaximum(0.6)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].followSetSafeYMinimum(-0.6)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].followSetSafeYMaximum(0.6)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].followSetModelNode(self.tumorModel_Needle)
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].followStart()
+    else:
+      self.viewpointLogic.nodeInstanceDictionary[viewNode].followStop()
+    self.updateDisableForButtons()
+      
+  def updateDisableForButtons(self):
+    # assume they're all enabled initially, then disable based on what's checked
+    self.leftCameraButton.setDisabled(False)
+    self.rightCameraButton.setDisabled(False)
+    self.leftFollowCameraButton.setDisabled(False)
+    self.rightFollowCameraButton.setDisabled(False)
+    if (self.leftCameraButton.isChecked() == True):
+      self.leftFollowCameraButton.setDisabled(True)
+      self.rightCameraButton.setDisabled(True)
+    if (self.rightCameraButton.isChecked() == True):
+      self.rightFollowCameraButton.setDisabled(True)
+      self.leftCameraButton.setDisabled(True)
+    if (self.leftFollowCameraButton.isChecked() == True):
+      self.leftCameraButton.setDisabled(True)
+    if (self.rightFollowCameraButton.isChecked() == True):
+      self.rightCameraButton.setDisabled(True)
+    
   def onDual3dButtonClicked(self):
     logging.debug("onDual3dButtonClicked")
     self.navigationView = self.VIEW_DUAL_3D
