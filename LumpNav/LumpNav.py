@@ -119,6 +119,14 @@ class LumpNavLogic(GuideletLogic):
                    'TestMode' : 'False',
                    'RecordingFilenamePrefix' : 'LumpNavRecording-',
                    'SavedScenesDirectory': defaultSavePathOfLumpNav,#overwrites the default setting param of base
+                   'LeftCameraAngle' : '110',
+                   'LeftCameraX' : '0',
+                   'LeftCameraY' : '0',
+                   'LeftCameraZ' : '210',
+                   'RightCameraAngle' : '110',
+                   'RightCameraX' : '0',
+                   'RightCameraY' : '0',
+                   'RightCameraZ' : '210',
                    }
     self.updateSettings(settingList, 'Default')
 
@@ -869,18 +877,26 @@ class LumpNavGuidelet(Guidelet):
     if (self.rightCameraButton.isChecked()== True):
       self.cameraViewAngleSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraViewAngleDeg
       self.cameraXPosSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraXPosMm
-      self.cameraZPosSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraZPosMm
       self.cameraYPosSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraYPosMm
+      self.cameraZPosSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraZPosMm
   
       self.connectViewpointLogic(viewNode)
-      self.viewpointLogic.nodeInstanceDictionary[viewNode].setViewNode(viewNode)
-      self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetTransformNode(self.cauteryCameraToCautery)
+      #=========================================================================
+      # self.viewpointLogic.nodeInstanceDictionary[viewNode].setViewNode(viewNode)
+      # self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetTransformNode(self.cauteryCameraToCautery)
+      #=========================================================================
       self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewStart()
       self.setDisableSliders(False)
     else:
       self.setDisableSliders(True)
       self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewStop()
       self.disconnectViewpointLogic(viewNode)
+      settings = {'RightCameraAngle' : str(self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraViewAngleDeg),
+                  'RightCameraX' : str(self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraXPosMm),
+                  'RightCameraY' : str(self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraYPosMm),
+                  'RightCameraZ' : str(self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraZPosMm) }
+      self.logic.updateParameterNodeFromUserPreferences(self.parameterNode, settings)
+      self.logic.updateSettings(settings)
     self.updateDisableForButtons()
 
   def onLeftCameraButtonClicked(self):
@@ -890,20 +906,29 @@ class LumpNavGuidelet(Guidelet):
     if (self.leftCameraButton.isChecked() == True):
       self.cameraViewAngleSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraViewAngleDeg
       self.cameraXPosSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraXPosMm
-      self.cameraZPosSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraZPosMm
       self.cameraYPosSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraYPosMm
+      self.cameraZPosSlider.value = self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraZPosMm
       
       self.connectViewpointLogic(viewNode)
-      self.viewpointLogic.nodeInstanceDictionary[viewNode].setViewNode(viewNode)
-      self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetTransformNode(self.cauteryCameraToCautery)
+      #=========================================================================
+      # self.viewpointLogic.nodeInstanceDictionary[viewNode].setViewNode(viewNode)
+      # self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetTransformNode(self.cauteryCameraToCautery)
+      #=========================================================================
       self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewStart()
       self.setDisableSliders(False)
     else:
       self.setDisableSliders(True)
       self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewStop()
       self.disconnectViewpointLogic(viewNode)
-    self.updateDisableForButtons()
+      settings = {'LeftCameraAngle' : str(self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraViewAngleDeg),
+                  'LeftCameraX' : str(self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraXPosMm),
+                  'LeftCameraY' : str(self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraYPosMm),
+                  'LeftCameraZ' : str(self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraZPosMm) }
+      self.logic.updateParameterNodeFromUserPreferences(self.parameterNode, settings)
+      self.logic.updateSettings(settings)
       
+    self.updateDisableForButtons()
+  
   def onRightFollowCameraButtonClicked(self):
     logging.debug("onRightFollowCameraButtonClicked {0}".format(self.rightFollowCameraButton.isChecked()))
     viewNode = self.getViewNode('View2')
@@ -1005,6 +1030,26 @@ class LumpNavGuidelet(Guidelet):
     self.placeButton.checked = False
     if self.tumorMarkups_Needle:
       self.tumorMarkups_Needle.SetDisplayVisibility(0)
+      
+    viewNode = self.getViewNode('View1')
+    self.viewpointLogic.changeCurrentViewNode(viewNode)
+    self.viewpointLogic.nodeInstanceDictionary[viewNode].setViewNode(viewNode)
+    self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraViewAngleDeg = float(self.parameterNode.GetParameter('LeftCameraAngle'))
+    self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraXPosMm = float(self.parameterNode.GetParameter('LeftCameraX'))
+    self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraYPosMm = float(self.parameterNode.GetParameter('LeftCameraY'))
+    self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraZPosMm = float(self.parameterNode.GetParameter('LeftCameraZ'))
+    self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetTransformNode(self.cauteryCameraToCautery)
+    self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewUpdate()
+     
+    viewNode = self.getViewNode('View2')
+    self.viewpointLogic.changeCurrentViewNode(viewNode)
+    self.viewpointLogic.nodeInstanceDictionary[viewNode].setViewNode(viewNode)
+    self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraViewAngleDeg = float(self.parameterNode.GetParameter('RightCameraAngle'))
+    self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraXPosMm = float(self.parameterNode.GetParameter('RightCameraX'))
+    self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraYPosMm = float(self.parameterNode.GetParameter('RightCameraY'))
+    self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewCameraZPosMm = float(self.parameterNode.GetParameter('RightCameraZ'))
+    self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewSetTransformNode(self.cauteryCameraToCautery)
+    self.viewpointLogic.nodeInstanceDictionary[viewNode].trackViewUpdate()
 
     ## Stop live ultrasound.
     #if self.connectorNode != None:
